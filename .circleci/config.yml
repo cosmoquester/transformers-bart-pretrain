@@ -2,7 +2,7 @@ version: 2.1
 
 executors:
   python-executor:
-    working_directory: ~/tf2-keras-template
+    working_directory: ~/transformers-bart-training
     docker:
       - image: circleci/python:3.8
 
@@ -36,7 +36,7 @@ jobs:
           name: Run Tests
           command: |
             source env/bin/activate
-            pytest --cov-branch --cov sample_package
+            pytest --cov-branch --cov transformers_bart_training
 
       - run:
           name: Upload coverage report
@@ -53,8 +53,8 @@ jobs:
           name: Run black, isort
           command: |
             source env/bin/activate
-            black --check sample_package scripts tests
-            isort sample_package scripts tests
+            black --check transformers_bart_training scripts tests
+            isort transformers_bart_training scripts tests
 
 workflows:
   main:

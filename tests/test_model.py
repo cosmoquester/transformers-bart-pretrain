@@ -1,7 +1,7 @@
 import pytest
 import tensorflow as tf
 
-from sample_package.model import SampleModel
+from transformers_bart_training.model import SampleModel
 
 
 def test_model():

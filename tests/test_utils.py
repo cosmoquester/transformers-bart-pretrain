@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from sample_package.utils import LRScheduler
+from transformers_bart_training.utils import LRScheduler
 
 
 @pytest.mark.parametrize(

@@ -5,9 +5,9 @@ from math import ceil
 
 import tensorflow as tf
 
-from sample_package.data import get_dataset
-from sample_package.model import SampleModel
-from sample_package.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
+from transformers_bart_training.data import get_dataset
+from transformers_bart_training.model import SampleModel
+from transformers_bart_training.utils import LRScheduler, get_device_strategy, get_logger, path_join, set_random_seed
 
 # fmt: off
 parser = argparse.ArgumentParser()
