@@ -1,4 +1,4 @@
-from sample_package.data import get_dataset
+from transformers_bart_training.data import get_dataset
 
 
 def test_get_dataset():

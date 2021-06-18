@@ -4,12 +4,12 @@ with open("README.md") as f:
     long_description = f.read()
 
 setup(
-    name="tf2-keras-template",
+    name="transformers-bart-training",
     version="0.0.1",
-    description="This is template repository for tensorflow keras model development.",
+    description="Script to train hugginface transformers BART",
     python_requires=">=3.6",
     install_requires=["tensorflow>=2"],
-    url="https://github.com/cosmoquester/tf2-keras-template.git",
+    url="https://github.com/cosmoquester/transformers-bart-training.git",
     author="Park Sangjun",
     classifiers=[
         "Programming Language :: Python :: 3",
