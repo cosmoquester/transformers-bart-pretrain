@@ -8,7 +8,7 @@ setup(
     version="0.0.1",
     description="Script to train hugginface transformers BART",
     python_requires=">=3.6",
-    install_requires=["tensorflow>=2"],
+    install_requires=["tensorflow>=2", "tensorflow-text", "transformers"],
     url="https://github.com/cosmoquester/transformers-bart-training.git",
     author="Park Sangjun",
     classifiers=[
