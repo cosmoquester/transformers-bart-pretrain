@@ -73,13 +73,14 @@ class LoggingCallback(tf.keras.callbacks.Callback):
         self.logs = {}
 
 
-def get_logger() -> logging.Logger:
+def get_logger(name: str) -> logging.Logger:
     """Return logger for logging"""
-    logger = logging.getLogger()
+    logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s"))
-    logger.addHandler(handler)
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s"))
+        logger.addHandler(handler)
     return logger
 
 
@@ -95,6 +96,13 @@ def set_random_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
     tf.random.set_seed(seed)
+
+
+def set_mixed_precision(device: str):
+    """Set mixed precision on"""
+    mixed_type = "mixed_bfloat16" if device == "TPU" else "mixed_float16"
+    policy = tf.keras.mixed_precision.experimental.Policy(mixed_type)
+    tf.keras.mixed_precision.experimental.set_policy(policy)
 
 
 def get_device_strategy(device) -> tf.distribute.Strategy:
