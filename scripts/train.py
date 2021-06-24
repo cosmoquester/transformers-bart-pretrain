@@ -10,7 +10,7 @@ from transformers_bart_training.data import (
     get_dataset,
     get_tfrecord_dataset,
     make_train_examples,
-    slice_example,
+    slice_example
 )
 from transformers_bart_training.measure import SparseCategoricalAccuracy, SparseCategoricalCrossentropy
 from transformers_bart_training.utils import (
@@ -18,7 +18,7 @@ from transformers_bart_training.utils import (
     get_device_strategy,
     get_logger,
     path_join,
-    set_mixed_precision,
+    set_mixed_precision
 )
 
 # fmt: off
