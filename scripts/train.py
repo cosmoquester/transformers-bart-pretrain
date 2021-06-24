@@ -26,7 +26,7 @@ parser = argparse.ArgumentParser("This is script to train seq2seq model")
 arg_group = parser.add_argument_group("File Paths")
 arg_group.add_argument("--model-config-path", type=str, required=True, help="model config file")
 arg_group.add_argument("--dataset-path", required=True, help="a text file or multiple files ex) *.txt")
-arg_group.add_argument("--pretrained-model-path", type=str, default=None, help="pretrained model checkpoint")
+arg_group.add_argument("--pretrained-checkpoint", type=str, default=None, help="pretrained checkpoint path")
 arg_group.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
 arg_group.add_argument("--sp-model-path", type=str, default="resources/sp-model/sp_model_unigram_16K.model")
 
@@ -137,9 +137,9 @@ def main(args: argparse.Namespace):
         )
         model.summary()
 
-        if args.pretrained_model_path:
+        if args.pretrained_checkpoint:
             logger.info("[+] Load weights of trained model")
-            model.load_weights(args.pretrained_model_path)
+            model.load_weights(args.pretrained_checkpoint)
 
         logger.info("[+] Compile Model")
         total_steps = (args.num_total_dataset - args.num_dev_dataset) // args.batch_size  # TODO: Device number
