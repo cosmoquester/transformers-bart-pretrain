@@ -76,6 +76,7 @@ class LoggingCallback(tf.keras.callbacks.Callback):
 def get_logger(name: str) -> logging.Logger:
     """Return logger for logging"""
     logger = logging.getLogger(name)
+    logger.propagate = False
     logger.setLevel(logging.DEBUG)
     if not logger.handlers:
         handler = logging.StreamHandler(sys.stdout)
