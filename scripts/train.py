@@ -11,6 +11,7 @@ from transformers_bart_training.data import (
     get_tfrecord_dataset,
     make_train_examples,
     slice_example,
+    text_infilling,
 )
 from transformers_bart_training.measure import SparseCategoricalAccuracy, SparseCategoricalCrossentropy
 from transformers_bart_training.utils import (
@@ -31,6 +32,8 @@ arg_group.add_argument("--output-path", default="output", help="output directory
 arg_group.add_argument("--sp-model-path", type=str, default="resources/sp-model/sp_model_unigram_16K.model")
 
 arg_group = parser.add_argument_group("Training Parameters")
+arg_group.add_argument("--mask-token", type=str, help="mask token ex) [MASK]")
+arg_group.add_argument("--mask-token-id", type=int, help="mask token id of vocab")
 arg_group.add_argument("--epochs", type=int, default=10)
 arg_group.add_argument("--steps-per-epoch", type=int, default=None)
 arg_group.add_argument("--learning-rate", type=float, default=2e-4)
@@ -80,6 +83,13 @@ def main(args: argparse.Namespace):
     with tf.io.gfile.GFile(args.sp_model_path, "rb") as f:
         tokenizer = text.SentencepieceTokenizer(f.read(), add_bos=True, add_eos=True)
 
+    if args.mask_token_id:
+        mask_token_id = args.mask_token_id
+    elif args.mask_token:
+        mask_token_id = tokenizer.string_to_id(args.mask_token).numpy()
+    else:
+        raise RuntimeError("You should set `--mask-token-id` or `--mask-token`")
+
     with strategy.scope():
         logger.info("[+] Load Dataset")
         if args.use_tfrecord:
@@ -93,17 +103,15 @@ def main(args: argparse.Namespace):
             dataset = dataset.filter(filter_example(args.max_sequence_length))
         elif args.max_over_sequence_policy == "slice":
             logger.info(f"[+] Slice examples whose sequence length is over than {args.max_sequence_length}")
-            dataset = dataset.map(
-                slice_example(args.max_sequence_length), num_parallel_calls=tf.data.experimental.AUTOTUNE
-            )
+            dataset = dataset.map(slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE)
         elif args.device == "TPU":
             raise RuntimeError(f"You should set max-over-sequence-policy with TPU!")
 
         # Make into Training Examples
         dataset = dataset.shuffle(args.shuffle_buffer_size).map(
-            make_train_examples, num_parallel_calls=tf.data.experimental.AUTOTUNE
+            make_train_examples, num_parallel_calls=tf.data.AUTOTUNE
         )
-        train_dataset = dataset.skip(args.num_dev_dataset)
+        train_dataset = dataset.skip(args.num_dev_dataset).map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
         dev_dataset = dataset.take(args.num_dev_dataset)
 
         if args.steps_per_epoch:

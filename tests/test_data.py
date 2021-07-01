@@ -1,9 +1,10 @@
 import os
 
+import pytest
 import tensorflow as tf
 import tensorflow_text as text
 
-from transformers_bart_training.data import get_dataset, get_tfrecord_dataset, make_train_examples
+from transformers_bart_training.data import get_dataset, get_tfrecord_dataset, make_train_examples, text_infilling
 
 from .const import DEFAULT_SPM_MODEL, TEST_DATA_DIR
 
@@ -45,3 +46,15 @@ def test_get_tfrecord_dataset():
     tf.debugging.assert_equal(train_examples[0]["input_ids"], [2, 192, 230, 605, 339, 133, 3])
     tf.debugging.assert_equal(train_examples[0]["decoder_input_ids"], [2, 192, 230, 605, 339, 133])
     tf.debugging.assert_equal(train_examples[1], [192, 230, 605, 339, 133, 3])
+
+
+@pytest.mark.parametrize("token_length", [3, 10, 5])
+def test_text_infilling(token_length):
+    text_infilling_fn = text_infilling(-1)
+
+    source_token = tf.random.uniform([token_length], 0, 100, tf.int32)
+    dummy = tf.random.normal(())
+    output = text_infilling_fn({"input_ids": source_token, "decoder_input_ids": dummy}, dummy)[0]["input_ids"]
+
+    tf.debugging.assert_equal(tf.reduce_sum(tf.cast(output == -1, tf.int32)), 1)
+    tf.debugging.assert_less_equal(output.shape[0], token_length + 1)
