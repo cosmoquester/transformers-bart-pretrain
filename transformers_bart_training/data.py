@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Tuple
+from typing import Callable, Dict, Tuple
 
 import tensorflow as tf
 import tensorflow_text as text
@@ -55,9 +55,33 @@ def get_tfrecord_dataset(dataset_file_path: str) -> tf.data.Dataset:
 
 
 @tf.function
-def make_train_examples(source_tokens: tf.Tensor, target_tokens: tf.Tensor):
+def make_train_examples(source_tokens: tf.Tensor, target_tokens: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
     """Make training examples from source and target tokens."""
     return {"input_ids": source_tokens, "decoder_input_ids": target_tokens[:-1]}, target_tokens[1:]
+
+
+def text_infilling(mask_token_id: int):
+    mask_token = tf.constant([mask_token_id], tf.int32)
+
+    @tf.function
+    def _text_infilling(inputs: Dict[str, tf.Tensor], target: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
+        """Add text infilling noise to example"""
+        source_tokens = inputs["input_ids"]
+        token_length = tf.shape(source_tokens)[0]
+        span_length = tf.minimum(tf.random.poisson((), lam=3, dtype=tf.int32), token_length - 1)
+        start_index = tf.random.uniform((), 0, token_length - span_length, tf.int32)
+        source_tokens = tf.concat(
+            [
+                source_tokens[:start_index],
+                mask_token,
+                source_tokens[start_index + span_length :],
+            ],
+            axis=0,
+        )
+
+        return {"input_ids": source_tokens, "decoder_input_ids": inputs["decoder_input_ids"]}, target
+
+    return _text_infilling
 
 
 def filter_example(max_sequence_length: int) -> Callable[[tf.Tensor, tf.Tensor], tf.Tensor]:

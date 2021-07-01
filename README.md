@@ -7,6 +7,7 @@
 
 - Script to train hugginface transformers BART
 - Training [BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension](https://arxiv.org/abs/1910.13461)
+- `Text infilling` is the only noise function available now
 
 # Train
 
@@ -23,6 +24,7 @@ $ CUDA_VISIBLE_DEVICES=1 python -m scripts.train \
     --num-dev-dataset 1 \
     -steps-per-epoch 100 \
     --num-dev-dataset 100 \
+    --mask-token "[MASK]" \
     --mixed-precision
 ```
 
@@ -41,6 +43,10 @@ File Paths:
   --sp-model-path SP_MODEL_PATH
 
 Training Parameters:
+  --mask-token MASK_TOKEN
+                        mask token ex) [MASK]
+  --mask-token-id MASK_TOKEN_ID
+                        mask token id of vocab
   --epochs EPOCHS
   --steps-per-epoch STEPS_PER_EPOCH
   --learning-rate LEARNING_RATE
