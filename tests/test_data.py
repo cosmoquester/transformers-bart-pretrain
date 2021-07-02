@@ -15,7 +15,7 @@ def test_get_dataset():
     with open(DEFAULT_SPM_MODEL, "rb") as f:
         tokenizer = text.SentencepieceTokenizer(f.read(), add_bos=True, add_eos=True)
 
-    dataset = get_dataset(TEST_SAMPLE_PATH, tokenizer, auto_encoding=True)
+    dataset = get_dataset(TEST_SAMPLE_PATH, tokenizer, auto_encoding=True, repeat=False)
     examples = [[x.tolist() for x in example] for example in dataset.as_numpy_iterator()]
     assert len(examples) == 3, "Sample dataset example number is wrong"
     assert examples == [
@@ -33,7 +33,7 @@ def test_get_dataset():
 def test_get_tfrecord_dataset():
     TEST_TFRECORD_PATH = os.path.join(TEST_DATA_DIR, "sample1.tfrecord")
 
-    dataset = get_tfrecord_dataset(TEST_TFRECORD_PATH)
+    dataset = get_tfrecord_dataset(TEST_TFRECORD_PATH, False)
     examples = [[x.tolist() for x in example] for example in dataset.as_numpy_iterator()]
     assert len(examples) == 3, "Sample dataset example number is wrong"
     assert examples == [
