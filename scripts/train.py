@@ -1,5 +1,6 @@
 import argparse
 import sys
+from math import ceil
 
 import tensorflow as tf
 import tensorflow_text as text
@@ -26,7 +27,8 @@ from transformers_bart_training.utils import (
 parser = argparse.ArgumentParser("This is script to train seq2seq model")
 arg_group = parser.add_argument_group("File Paths")
 arg_group.add_argument("--model-config-path", type=str, required=True, help="model config file")
-arg_group.add_argument("--dataset-path", required=True, help="a text file or multiple files ex) *.txt")
+arg_group.add_argument("--train-dataset-path", required=True, help="training dataset, a text file or multiple files ex) *.txt")
+arg_group.add_argument("--dev-dataset-path", required=True, help="dev dataset, a text file or multiple files ex) *.txt")
 arg_group.add_argument("--pretrained-checkpoint", type=str, default=None, help="pretrained checkpoint path")
 arg_group.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
 arg_group.add_argument("--sp-model-path", type=str, default="resources/sp-model/sp_model_unigram_16K.model")
@@ -40,10 +42,9 @@ arg_group.add_argument("--learning-rate", type=float, default=2e-4)
 arg_group.add_argument("--min-learning-rate", type=float, default=1e-5)
 arg_group.add_argument("--warmup-steps", type=int)
 arg_group.add_argument("--warmup-rate", type=float, default=0.06)
-arg_group.add_argument("--batch-size", type=int, default=512)
+arg_group.add_argument("--batch-size", type=int, default=512, help="total training batch size of all devices")
 arg_group.add_argument("--dev-batch-size", type=int, default=512)
 arg_group.add_argument("--num-total-dataset", type=int, default=1000000)
-arg_group.add_argument("--num-dev-dataset", type=int, default=30000)
 arg_group.add_argument("--shuffle-buffer-size", type=int, default=20000)
 arg_group.add_argument("--prefetch-buffer-size", type=int, default=1000)
 arg_group.add_argument("--max-sequence-length", type=int, default=256)
@@ -53,6 +54,7 @@ arg_group.add_argument("--tensorboard-update-freq", type=int, help='log losses a
 arg_group.add_argument("--mixed-precision", action="store_true", help="Use mixed precision FP16")
 arg_group.add_argument("--auto-encoding", action="store_true", help="train by auto encoding with text lines dataset")
 arg_group.add_argument("--use-tfrecord", action="store_true", help="train using tfrecord dataset")
+arg_group.add_argument("--repeat-each-file", action="store_true", dest="repeat", help="repeat each dataset and uniform sample for train example")
 arg_group.add_argument("--debug-nan-loss", action="store_true", help="Trainin with this flag, print the number of Nan loss (not supported on TPU)")
 arg_group.add_argument("--device", type=str, default="CPU", choices= ["CPU", "GPU", "TPU"], help="device to train model")
 arg_group.add_argument("--max-over-sequence-policy", type=str, choices=["filter", "slice"], help="Policy for sequences of which length is over the max")
@@ -75,8 +77,9 @@ def main(args: argparse.Namespace):
             fout.write(f"{k}: {v}\n")
     tf.io.gfile.copy(args.model_config_path, path_join(args.output_path, "model_config.yml"))
 
-    dataset_files = tf.io.gfile.glob(args.dataset_path)
-    if not dataset_files:
+    train_dataset_files = tf.io.gfile.glob(args.train_dataset_path)
+    dev_dataset_files = tf.io.gfile.glob(args.dev_dataset_path)
+    if not train_dataset_files or not dev_dataset_files:
         raise RuntimeError("Dataset path is invalid!")
 
     logger.info("[+] Load Tokenizer")
@@ -93,30 +96,41 @@ def main(args: argparse.Namespace):
     with strategy.scope():
         logger.info("[+] Load Dataset")
         if args.use_tfrecord:
-            dataset = get_tfrecord_dataset(dataset_files)
+            train_dataset = get_tfrecord_dataset(args.train_dataset_path, args.repeat)
+            dev_dataset = get_tfrecord_dataset(args.dev_dataset_path, False)
         else:
-            dataset = get_dataset(dataset_files, tokenizer, args.auto_encoding)
+            train_dataset = get_dataset(args.train_dataset_path, tokenizer, args.auto_encoding, args.repeat)
+            dev_dataset = get_dataset(args.dev_dataset_path, tokenizer, args.auto_encoding, False)
 
         # Apply policy for sequences whose length is over than max sequence length
         if args.max_over_sequence_policy == "filter":
             logger.info(f"[+] Filter examples whose sequence length is over than {args.max_sequence_length}")
-            dataset = dataset.filter(filter_example(args.max_sequence_length))
+            train_dataset = train_dataset.filter(filter_example(args.max_sequence_length))
+            dev_dataset = dev_dataset.filter(filter_example(args.max_sequence_length))
         elif args.max_over_sequence_policy == "slice":
             logger.info(f"[+] Slice examples whose sequence length is over than {args.max_sequence_length}")
-            dataset = dataset.map(slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE)
+            train_dataset = train_dataset.map(
+                slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE
+            )
+            dev_dataset = dev_dataset.map(slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE)
         elif args.device == "TPU":
-            raise RuntimeError(f"You should set max-over-sequence-policy with TPU!")
+            raise RuntimeError(f"You should set --max-over-sequence-policy with TPU!")
 
         # Make into Training Examples
-        dataset = dataset.shuffle(args.shuffle_buffer_size).map(
-            make_train_examples, num_parallel_calls=tf.data.AUTOTUNE
+        train_dataset = (
+            train_dataset.shuffle(args.shuffle_buffer_size)
+            .map(make_train_examples, num_parallel_calls=tf.data.AUTOTUNE)
+            .map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
         )
-        train_dataset = dataset.skip(args.num_dev_dataset).map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
-        dev_dataset = dataset.take(args.num_dev_dataset)
+        dev_dataset = dev_dataset.map(make_train_examples).map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
 
         if args.steps_per_epoch:
             logger.info("[+] Repeat dataset")
             train_dataset = train_dataset.repeat()
+        elif not args.num_total_dataset:
+            raise RuntimeError("You should pass `--num-total-dataset` or `--steps-per-epoch` for lr scheduling!")
+        elif args.repeat:
+            raise RuntimeError("You should pass `--steps-per-epoch` when using `--repeat-each-file`!")
 
         logger.info("[+] Initialize Model")
         model_config = BartConfig.from_pretrained(args.model_config_path)
@@ -150,7 +164,7 @@ def main(args: argparse.Namespace):
             model.load_weights(args.pretrained_checkpoint)
 
         logger.info("[+] Compile Model")
-        total_steps = (args.num_total_dataset - args.num_dev_dataset) // args.batch_size  # TODO: Device number
+        total_steps = (args.steps_per_epoch or ceil(args.num_total_dataset / args.batch_size)) * args.epochs
         learning_rate = LRScheduler(
             total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps
         )
