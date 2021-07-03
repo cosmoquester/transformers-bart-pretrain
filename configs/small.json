@@ -1,6 +1,6 @@
 {
     "transformers_version": "4.7.0",
-    "vocab_size": 8000,
+    "vocab_size": 32000,
     "d_model": 512,
     "encoder_attention_heads": 4,
     "encoder_ffn_dim": 2048,
