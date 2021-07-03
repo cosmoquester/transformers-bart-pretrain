@@ -16,7 +16,8 @@ You can train huggingface transformers model simply like below example.
 ```sh
 $ CUDA_VISIBLE_DEVICES=1 python -m scripts.train \
     --model-config-path configs/base.json \
-    --dataset-path tests/data/sample1.txt \
+    --train-dataset-path tests/data/sample1.txt \
+    --dev-dataset-path tests/data/sample1.txt \
     --sp-model-path sp_model/sp_model_unigram_8K.model \
     --device GPU \
     --auto-encoding \
@@ -34,8 +35,11 @@ $ CUDA_VISIBLE_DEVICES=1 python -m scripts.train \
 File Paths:
   --model-config-path MODEL_CONFIG_PATH
                         model config file
-  --dataset-path DATASET_PATH
-                        a text file or multiple files ex) *.txt
+  --train-dataset-path TRAIN_DATASET_PATH
+                        training dataset, a text file or multiple files ex)
+                        *.txt
+  --dev-dataset-path DEV_DATASET_PATH
+                        dev dataset, a text file or multiple files ex) *.txt
   --pretrained-checkpoint PRETRAINED_CHECKPOINT
                         pretrained checkpoint path
   --output-path OUTPUT_PATH
@@ -54,9 +58,9 @@ Training Parameters:
   --warmup-steps WARMUP_STEPS
   --warmup-rate WARMUP_RATE
   --batch-size BATCH_SIZE
+                        total training batch size of all devices
   --dev-batch-size DEV_BATCH_SIZE
   --num-total-dataset NUM_TOTAL_DATASET
-  --num-dev-dataset NUM_DEV_DATASET
   --shuffle-buffer-size SHUFFLE_BUFFER_SIZE
   --prefetch-buffer-size PREFETCH_BUFFER_SIZE
   --max-sequence-length MAX_SEQUENCE_LENGTH
@@ -67,6 +71,8 @@ Other settings:
   --mixed-precision     Use mixed precision FP16
   --auto-encoding       train by auto encoding with text lines dataset
   --use-tfrecord        train using tfrecord dataset
+  --repeat-each-file    repeat each dataset and uniform sample for train
+                        example
   --debug-nan-loss      Trainin with this flag, print the number of Nan loss
                         (not supported on TPU)
   --device {CPU,GPU,TPU}
@@ -77,3 +83,4 @@ Other settings:
 - `model-config-path` is huggingface bart model config file path.
 - `pretrained-checkpoint` is trained model checkpoint path.
 - `sp-model-path` is sentencepiece tokenizer model path.
+- with `repeat-each-file` flag, you can repeat each dataset files forever even if one of dataset were run out.
