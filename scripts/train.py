@@ -139,7 +139,10 @@ def main(args: argparse.Namespace):
         # Batching
         pad_length = None if args.device != "TPU" else args.max_sequence_length
         pad_shape = (
-            {"input_ids": [pad_length], "decoder_input_ids": [pad_length - 1 if pad_length else None]},
+            {
+                "input_ids": [pad_length + 1 if pad_length else None],
+                "decoder_input_ids": [pad_length - 1 if pad_length else None],
+            },
             [pad_length - 1 if pad_length else None],
         )
         pad_values = (
