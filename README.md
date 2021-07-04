@@ -23,8 +23,7 @@ $ CUDA_VISIBLE_DEVICES=1 python -m scripts.train \
     --auto-encoding \
     --batch-size 2 \
     --num-dev-dataset 1 \
-    -steps-per-epoch 100 \
-    --num-dev-dataset 100 \
+    --steps-per-epoch 100 \
     --mask-token "[MASK]" \
     --mixed-precision
 ```
