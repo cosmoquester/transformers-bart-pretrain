@@ -12,6 +12,7 @@
 # Train
 
 You can train huggingface transformers model simply like below example.
+(below example works without change as itself using sample data)
 
 ```sh
 $ CUDA_VISIBLE_DEVICES=1 python -m scripts.train \
@@ -22,7 +23,6 @@ $ CUDA_VISIBLE_DEVICES=1 python -m scripts.train \
     --device GPU \
     --auto-encoding \
     --batch-size 2 \
-    --num-dev-dataset 1 \
     --steps-per-epoch 100 \
     --mask-token "[MASK]" \
     --mixed-precision
@@ -74,6 +74,9 @@ Other settings:
                         example
   --debug-nan-loss      Trainin with this flag, print the number of Nan loss
                         (not supported on TPU)
+  --seed SEED           random seed
+  --skip-epochs SKIP_EPOCHS
+                        skip this number of epochs
   --device {CPU,GPU,TPU}
                         device to train model
   --max-over-sequence-policy {filter,slice}
