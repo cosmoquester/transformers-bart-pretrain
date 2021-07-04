@@ -1,3 +1,5 @@
 tensorflow>=2
 tensorflow-text
 transformers
+tokenizers
+httpimport
