@@ -21,6 +21,7 @@ from transformers_bart_training.utils import (
     get_logger,
     path_join,
     set_mixed_precision,
+    set_random_seed,
 )
 
 # fmt: off
@@ -56,6 +57,8 @@ arg_group.add_argument("--auto-encoding", action="store_true", help="train by au
 arg_group.add_argument("--use-tfrecord", action="store_true", help="train using tfrecord dataset")
 arg_group.add_argument("--repeat-each-file", action="store_true", dest="repeat", help="repeat each dataset and uniform sample for train example")
 arg_group.add_argument("--debug-nan-loss", action="store_true", help="Trainin with this flag, print the number of Nan loss (not supported on TPU)")
+arg_group.add_argument("--seed", type=int, help="random seed")
+arg_group.add_argument("--skip-epochs", type=int, default=0, help="skip this number of epochs")
 arg_group.add_argument("--device", type=str, default="CPU", choices= ["CPU", "GPU", "TPU"], help="device to train model")
 arg_group.add_argument("--max-over-sequence-policy", type=str, choices=["filter", "slice"], help="Policy for sequences of which length is over the max")
 # fmt: on
@@ -67,8 +70,12 @@ def main(args: argparse.Namespace):
     logger = get_logger(__name__)
 
     if args.mixed_precision:
-        set_mixed_precision(args.device)
         logger.info("[+] Use Mixed Precision FP16")
+        set_mixed_precision(args.device)
+
+    if args.seed:
+        logger.info(f"[+] Set random seed to {args.seed}")
+        set_random_seed(args.seed)
 
     # Copy config file
     tf.io.gfile.makedirs(args.output_path)
@@ -116,6 +123,20 @@ def main(args: argparse.Namespace):
         elif args.device == "TPU":
             raise RuntimeError(f"You should set --max-over-sequence-policy with TPU!")
 
+        if args.steps_per_epoch:
+            logger.info("[+] Repeat dataset")
+            train_dataset = train_dataset.repeat()
+
+            if args.skip_epochs:
+                logger.info(
+                    f"[+] Skip examples by {args.skip_epochs}epoch x {args.steps_per_epoch} steps x {args.batch_size} batches"
+                )
+                train_dataset = train_dataset.skip(args.skip_epochs * args.steps_per_epoch * args.batch_size)
+        elif not args.num_total_dataset:
+            raise RuntimeError("You should pass `--num-total-dataset` or `--steps-per-epoch` for lr scheduling!")
+        elif args.repeat:
+            raise RuntimeError("You should pass `--steps-per-epoch` when using `--repeat-each-file`!")
+
         # Make into Training Examples
         train_dataset = (
             train_dataset.shuffle(args.shuffle_buffer_size)
@@ -123,14 +144,6 @@ def main(args: argparse.Namespace):
             .map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
         )
         dev_dataset = dev_dataset.map(make_train_examples).map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
-
-        if args.steps_per_epoch:
-            logger.info("[+] Repeat dataset")
-            train_dataset = train_dataset.repeat()
-        elif not args.num_total_dataset:
-            raise RuntimeError("You should pass `--num-total-dataset` or `--steps-per-epoch` for lr scheduling!")
-        elif args.repeat:
-            raise RuntimeError("You should pass `--steps-per-epoch` when using `--repeat-each-file`!")
 
         logger.info("[+] Initialize Model")
         model_config = BartConfig.from_pretrained(args.model_config_path)
@@ -168,8 +181,9 @@ def main(args: argparse.Namespace):
 
         logger.info("[+] Compile Model")
         total_steps = (args.steps_per_epoch or ceil(args.num_total_dataset / args.batch_size)) * args.epochs
+        offset_steps = (args.steps_per_epoch or ceil(args.num_total_dataset / args.batch_size)) * args.skip_epochs
         learning_rate = LRScheduler(
-            total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps
+            total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
         )
 
         model.compile(
@@ -185,6 +199,7 @@ def main(args: argparse.Namespace):
         model.fit(
             train_dataset,
             validation_data=dev_dataset,
+            initial_epoch=args.skip_epochs,
             epochs=args.epochs,
             steps_per_epoch=args.steps_per_epoch,
             callbacks=[
