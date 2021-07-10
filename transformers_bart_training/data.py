@@ -81,7 +81,15 @@ def make_train_examples(source_tokens: tf.Tensor, target_tokens: tf.Tensor) -> T
 def text_infilling(mask_token_id: int):
     mask_token = tf.constant([mask_token_id], tf.int32)
 
-    @tf.function
+    @tf.function(
+        input_signature=[
+            {
+                "input_ids": tf.TensorSpec(shape=[None], dtype=tf.int32),
+                "decoder_input_ids": tf.TensorSpec(shape=[None], dtype=tf.int32),
+            },
+            tf.TensorSpec(shape=[None], dtype=tf.int32),
+        ]
+    )
     def _text_infilling(inputs: Dict[str, tf.Tensor], target: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
         """Add text infilling noise to example"""
         source_tokens = inputs["input_ids"]
