@@ -48,7 +48,7 @@ def test_get_tfrecord_dataset():
     tf.debugging.assert_equal(train_examples[1], [192, 230, 605, 339, 133, 3])
 
 
-@pytest.mark.parametrize("token_length", [3, 10, 5])
+@pytest.mark.parametrize("token_length", [12, 10, 25])
 def test_text_infilling(token_length):
     text_infilling_fn = text_infilling(-1)
 
@@ -56,5 +56,5 @@ def test_text_infilling(token_length):
     dummy = tf.random.normal(())
     output = text_infilling_fn({"input_ids": source_token, "decoder_input_ids": dummy}, dummy)[0]["input_ids"]
 
-    tf.debugging.assert_equal(tf.reduce_sum(tf.cast(output == -1, tf.int32)), 1)
+    tf.debugging.assert_greater_equal(tf.reduce_sum(tf.cast(output == -1, tf.int32)), 1)
     tf.debugging.assert_less_equal(output.shape[0], token_length + 1)

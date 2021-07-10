@@ -86,16 +86,24 @@ def text_infilling(mask_token_id: int):
         """Add text infilling noise to example"""
         source_tokens = inputs["input_ids"]
         token_length = tf.shape(source_tokens)[0]
-        span_length = tf.minimum(tf.random.poisson((), lam=3, dtype=tf.int32), token_length - 1)
-        start_index = tf.random.uniform((), 0, token_length - span_length, tf.int32)
-        source_tokens = tf.concat(
-            [
-                source_tokens[:start_index],
-                mask_token,
-                source_tokens[start_index + span_length :],
-            ],
-            axis=0,
-        )
+        masking_length = tf.cast(tf.cast(token_length, tf.float32) * 0.3, tf.int32)
+        masked_length = 0
+
+        while masked_length < masking_length:
+            tf.autograph.experimental.set_loop_options(shape_invariants=[(source_tokens, tf.TensorShape([None]))])
+            span_length = tf.minimum(tf.random.poisson((), lam=3, dtype=tf.int32), token_length - 1)
+            start_index = tf.random.uniform((), 0, token_length - span_length, tf.int32)
+
+            source_tokens = tf.concat(
+                [
+                    source_tokens[:start_index],
+                    mask_token,
+                    source_tokens[start_index + span_length :],
+                ],
+                axis=0,
+            )
+            token_length -= span_length - 1
+            masked_length += span_length
 
         return {"input_ids": source_tokens, "decoder_input_ids": inputs["decoder_input_ids"]}, target
 
