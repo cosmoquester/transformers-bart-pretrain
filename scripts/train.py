@@ -3,6 +3,7 @@ import sys
 from math import ceil
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow_text as text
 from transformers import BartConfig, TFBartForConditionalGeneration
 
@@ -185,9 +186,12 @@ def main(args: argparse.Namespace):
         learning_rate = LRScheduler(
             total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
         )
+        weight_decay = LRScheduler(
+            total_steps, 0.01, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
+        )
 
         model.compile(
-            optimizer=tf.optimizers.Adam(learning_rate),
+            optimizer=tfa.optimizers.AdamW(weight_decay, learning_rate),
             loss={
                 "logits": SparseCategoricalCrossentropy(model_config.pad_token_id, from_logits=True),
                 "encoder_last_hidden_state": None,
