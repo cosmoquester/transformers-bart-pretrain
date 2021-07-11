@@ -3,9 +3,8 @@ import sys
 from math import ceil
 
 import tensorflow as tf
-import tensorflow_addons as tfa
 import tensorflow_text as text
-from transformers import BartConfig, TFBartForConditionalGeneration
+from transformers import AdamWeightDecay, BartConfig, TFBartForConditionalGeneration
 
 from transformers_bart_training.data import (
     filter_example,
@@ -60,7 +59,7 @@ arg_group.add_argument("--repeat-each-file", action="store_true", dest="repeat",
 arg_group.add_argument("--debug-nan-loss", action="store_true", help="Trainin with this flag, print the number of Nan loss (not supported on TPU)")
 arg_group.add_argument("--seed", type=int, help="random seed")
 arg_group.add_argument("--skip-epochs", type=int, default=0, help="skip this number of epochs")
-arg_group.add_argument("--device", type=str, default="CPU", choices= ["CPU", "GPU", "TPU"], help="device to train model")
+arg_group.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", "TPU"], help="device to train model")
 arg_group.add_argument("--max-over-sequence-policy", type=str, choices=["filter", "slice"], help="Policy for sequences of which length is over the max")
 # fmt: on
 
@@ -122,7 +121,7 @@ def main(args: argparse.Namespace):
             )
             dev_dataset = dev_dataset.map(slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE)
         elif args.device == "TPU":
-            raise RuntimeError(f"You should set --max-over-sequence-policy with TPU!")
+            raise RuntimeError("You should set --max-over-sequence-policy with TPU!")
 
         if args.steps_per_epoch:
             logger.info("[+] Repeat dataset")
@@ -186,12 +185,13 @@ def main(args: argparse.Namespace):
         learning_rate = LRScheduler(
             total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
         )
-        weight_decay = LRScheduler(
-            total_steps, 0.01, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
-        )
 
         model.compile(
-            optimizer=tfa.optimizers.AdamW(weight_decay, learning_rate),
+            optimizer=AdamWeightDecay(
+                learning_rate,
+                weight_decay_rate=0.01,
+                exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
+            ),
             loss={
                 "logits": SparseCategoricalCrossentropy(model_config.pad_token_id, from_logits=True),
                 "encoder_last_hidden_state": None,
