@@ -4,7 +4,7 @@ import sys
 import tensorflow as tf
 from transformers import BartConfig, TFBartForConditionalGeneration
 
-from transformers_bart_training.utils import get_logger
+from transformers_bart_pretrain.utils import get_logger
 
 parser = argparse.ArgumentParser(description="convert tensorflow checkpoint to huggingface pretrained format")
 parser.add_argument("--model-config-path", type=str, required=True, help="model config file")

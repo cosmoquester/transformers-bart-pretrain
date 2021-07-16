@@ -4,7 +4,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_text as text
 
-from transformers_bart_training.data import get_dataset, get_tfrecord_dataset, make_train_examples, text_infilling
+from transformers_bart_pretrain.data import get_dataset, get_tfrecord_dataset, make_train_examples, text_infilling
 
 from .const import DEFAULT_SPM_MODEL, TEST_DATA_DIR
 

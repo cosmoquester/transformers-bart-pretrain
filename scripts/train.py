@@ -6,7 +6,7 @@ import tensorflow as tf
 import tensorflow_text as text
 from transformers import AdamWeightDecay, BartConfig, TFBartForConditionalGeneration
 
-from transformers_bart_training.data import (
+from transformers_bart_pretrain.data import (
     filter_example,
     get_dataset,
     get_tfrecord_dataset,
@@ -14,8 +14,8 @@ from transformers_bart_training.data import (
     slice_example,
     text_infilling,
 )
-from transformers_bart_training.measure import SparseCategoricalAccuracy, SparseCategoricalCrossentropy
-from transformers_bart_training.utils import (
+from transformers_bart_pretrain.measure import SparseCategoricalAccuracy, SparseCategoricalCrossentropy
+from transformers_bart_pretrain.utils import (
     LRScheduler,
     get_device_strategy,
     get_logger,
