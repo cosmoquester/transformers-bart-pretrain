@@ -36,7 +36,7 @@ jobs:
           name: Run Tests
           command: |
             source env/bin/activate
-            pytest --cov-branch --cov transformers_bart_training
+            pytest --cov-branch --cov transformers_bart_pretrain
 
       - run:
           name: Upload coverage report
@@ -53,8 +53,8 @@ jobs:
           name: Run black, isort
           command: |
             source env/bin/activate
-            black --check transformers_bart_training scripts tests
-            isort transformers_bart_training scripts tests
+            black --check transformers_bart_pretrain scripts tests
+            isort transformers_bart_pretrain scripts tests
 
 workflows:
   main:
