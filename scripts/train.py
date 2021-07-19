@@ -49,6 +49,7 @@ arg_group.add_argument("--num-total-dataset", type=int, default=1000000)
 arg_group.add_argument("--shuffle-buffer-size", type=int, default=20000)
 arg_group.add_argument("--prefetch-buffer-size", type=int, default=1000)
 arg_group.add_argument("--max-sequence-length", type=int, default=256)
+arg_group.add_argument("--weight-decay", type=float, default=0.0, help="use weight decay")
 
 arg_group = parser.add_argument_group("Other settings")
 arg_group.add_argument("--tensorboard-update-freq", type=int, help='log losses and metrics every after this value step')
@@ -186,12 +187,17 @@ def main(args: argparse.Namespace):
             total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
         )
 
-        model.compile(
-            optimizer=AdamWeightDecay(
+        if args.weight_decay > 0.0:
+            optimizer = AdamWeightDecay(
                 learning_rate,
                 weight_decay_rate=0.01,
                 exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
-            ),
+            )
+        else:
+            optimizer = tf.keras.optimizers.Adam(learning_rate)
+
+        model.compile(
+            optimizer=optimizer,
             loss={
                 "logits": SparseCategoricalCrossentropy(model_config.pad_token_id, from_logits=True),
                 "encoder_last_hidden_state": None,

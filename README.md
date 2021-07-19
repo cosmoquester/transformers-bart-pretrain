@@ -63,6 +63,8 @@ Training Parameters:
   --shuffle-buffer-size SHUFFLE_BUFFER_SIZE
   --prefetch-buffer-size PREFETCH_BUFFER_SIZE
   --max-sequence-length MAX_SEQUENCE_LENGTH
+  --weight-decay WEIGHT_DECAY
+                        use weight decay
 
 Other settings:
   --tensorboard-update-freq TENSORBOARD_UPDATE_FREQ
