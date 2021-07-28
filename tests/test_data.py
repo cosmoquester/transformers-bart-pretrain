@@ -54,7 +54,14 @@ def test_text_infilling(token_length):
 
     source_token = tf.random.uniform([token_length], 0, 100, tf.int32)
     dummy = tf.constant([1, 2, 3])
-    output = text_infilling_fn({"input_ids": source_token, "decoder_input_ids": dummy}, dummy)[0]["input_ids"]
+    output = text_infilling_fn(
+        {
+            "input_ids": source_token,
+            "decoder_input_ids": dummy,
+            "attention_mask": tf.random.uniform(source_token.shape, 0, 2, dtype=tf.int32),
+        },
+        dummy,
+    )[0]["input_ids"]
 
     tf.debugging.assert_greater_equal(tf.reduce_sum(tf.cast(output == -1, tf.int32)), 1)
     tf.debugging.assert_less_equal(output.shape[0], token_length + 1)
