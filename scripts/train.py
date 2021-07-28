@@ -61,7 +61,7 @@ arg_group.add_argument("--debug-nan-loss", action="store_true", help="Trainin wi
 arg_group.add_argument("--seed", type=int, help="random seed")
 arg_group.add_argument("--skip-epochs", type=int, default=0, help="skip this number of epochs")
 arg_group.add_argument("--device", type=str, default="CPU", choices=["CPU", "GPU", "TPU"], help="device to train model")
-arg_group.add_argument("--max-over-sequence-policy", type=str, choices=["filter", "slice"], help="Policy for sequences of which length is over the max")
+arg_group.add_argument("--max-over-sequence-policy", type=str, default="slice", choices=["filter", "slice"], help="Policy for sequences of which length is over the max")
 # fmt: on
 
 
@@ -121,8 +121,6 @@ def main(args: argparse.Namespace):
                 slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE
             )
             dev_dataset = dev_dataset.map(slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE)
-        elif args.device == "TPU":
-            raise RuntimeError("You should set --max-over-sequence-policy with TPU!")
 
         if args.steps_per_epoch:
             logger.info("[+] Repeat dataset")
@@ -151,14 +149,13 @@ def main(args: argparse.Namespace):
         model = TFBartForConditionalGeneration(model_config)
 
         # Batching
-        pad_length = None if args.device != "TPU" else args.max_sequence_length
         pad_shape = (
             {
-                "input_ids": [pad_length + 1 if pad_length else None],
-                "attention_mask": [pad_length + 1 if pad_length else None],
-                "decoder_input_ids": [pad_length - 1 if pad_length else None],
+                "input_ids": [args.max_sequence_length + 1],
+                "attention_mask": [args.max_sequence_length + 1],
+                "decoder_input_ids": [args.max_sequence_length - 1],
             },
-            [pad_length - 1 if pad_length else None],
+            [args.max_sequence_length - 1],
         )
         pad_values = (
             {
@@ -175,9 +172,9 @@ def main(args: argparse.Namespace):
 
         model(
             {
-                "input_ids": tf.keras.Input([pad_length], dtype=tf.int32),
-                "attention_mask": tf.keras.Input([pad_length], dtype=tf.int32),
-                "decoder_input_ids": tf.keras.Input([pad_length - 1 if pad_length else None], dtype=tf.int32),
+                "input_ids": tf.keras.Input([args.max_sequence_length + 1], dtype=tf.int32),
+                "attention_mask": tf.keras.Input([args.max_sequence_length + 1], dtype=tf.int32),
+                "decoder_input_ids": tf.keras.Input([args.max_sequence_length - 1], dtype=tf.int32),
             }
         )
         model.summary()
