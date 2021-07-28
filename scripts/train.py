@@ -155,12 +155,17 @@ def main(args: argparse.Namespace):
         pad_shape = (
             {
                 "input_ids": [pad_length + 1 if pad_length else None],
+                "attention_mask": [pad_length + 1 if pad_length else None],
                 "decoder_input_ids": [pad_length - 1 if pad_length else None],
             },
             [pad_length - 1 if pad_length else None],
         )
         pad_values = (
-            {"input_ids": model_config.pad_token_id, "decoder_input_ids": model_config.pad_token_id},
+            {
+                "input_ids": model_config.pad_token_id,
+                "attention_mask": 0,
+                "decoder_input_ids": model_config.pad_token_id,
+            },
             model_config.pad_token_id,
         )
         train_dataset = train_dataset.padded_batch(args.batch_size, pad_shape, pad_values).prefetch(
@@ -171,6 +176,7 @@ def main(args: argparse.Namespace):
         model(
             {
                 "input_ids": tf.keras.Input([pad_length], dtype=tf.int32),
+                "attention_mask": tf.keras.Input([pad_length], dtype=tf.int32),
                 "decoder_input_ids": tf.keras.Input([pad_length - 1 if pad_length else None], dtype=tf.int32),
             }
         )
