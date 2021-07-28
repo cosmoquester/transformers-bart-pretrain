@@ -75,7 +75,11 @@ def get_tfrecord_dataset(dataset_paths: str, repeat=False) -> tf.data.Dataset:
 @tf.function
 def make_train_examples(source_tokens: tf.Tensor, target_tokens: tf.Tensor) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
     """Make training examples from source and target tokens."""
-    return {"input_ids": source_tokens, "decoder_input_ids": target_tokens[:-1]}, target_tokens[1:]
+    return {
+        "input_ids": source_tokens,
+        "attention_mask": tf.ones_like(source_tokens, dtype=tf.int32),
+        "decoder_input_ids": target_tokens[:-1],
+    }, target_tokens[1:]
 
 
 def text_infilling(mask_token_id: int):
@@ -85,6 +89,7 @@ def text_infilling(mask_token_id: int):
         input_signature=[
             {
                 "input_ids": tf.TensorSpec(shape=[None], dtype=tf.int32),
+                "attention_mask": tf.TensorSpec(shape=[None], dtype=tf.int32),
                 "decoder_input_ids": tf.TensorSpec(shape=[None], dtype=tf.int32),
             },
             tf.TensorSpec(shape=[None], dtype=tf.int32),
@@ -113,7 +118,11 @@ def text_infilling(mask_token_id: int):
             token_length -= span_length - 1
             masked_length += span_length
 
-        return {"input_ids": source_tokens, "decoder_input_ids": inputs["decoder_input_ids"]}, target
+        return {
+            "input_ids": source_tokens,
+            "attention_mask": inputs["attention_mask"],
+            "decoder_input_ids": inputs["decoder_input_ids"],
+        }, target
 
     return _text_infilling
 
