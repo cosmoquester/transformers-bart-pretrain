@@ -3,8 +3,9 @@ import sys
 from math import ceil
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow_text as text
-from transformers import AdamWeightDecay, BartConfig, TFBartForConditionalGeneration
+from transformers import BartConfig, TFBartForConditionalGeneration
 
 from transformers_bart_pretrain.data import (
     filter_example,
@@ -191,13 +192,15 @@ def main(args: argparse.Namespace):
         )
 
         if args.weight_decay > 0.0:
-            optimizer = AdamWeightDecay(
+            optimizer = tfa.optimizers.LAMB(
                 learning_rate,
-                weight_decay_rate=0.01,
+                weight_decay_rate=args.weight_decay,
                 exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
             )
+            logger.info("[+] Use LAMB Optimizer")
         else:
             optimizer = tf.keras.optimizers.Adam(learning_rate)
+            logger.info("[+] Use Adam Optimizer")
 
         model.compile(
             optimizer=optimizer,
