@@ -31,7 +31,7 @@ def read_data(file_path: str, tokenizer: text.SentencepieceTokenizer, auto_encod
             num_parallel_reads=tf.data.experimental.AUTOTUNE,
         ).map(duplicate)
     else:
-        dataset = tf.data.experimental.CsvDataset(file_path, [tf.string, tf.string], field_delim="\t")
+        dataset = tf.data.experimental.CsvDataset(file_path, [tf.string, tf.string], header=True, field_delim="\t")
 
     serialize = tf.function(
         lambda source, target: tf.stack([tf.io.serialize_tensor(source), tf.io.serialize_tensor(target)])
