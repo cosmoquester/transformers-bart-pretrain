@@ -2,10 +2,9 @@ from functools import partial
 from typing import Callable, Dict, Tuple
 
 import tensorflow as tf
-import tensorflow_text as text
 
 
-def get_dataset(dataset_paths: str, tokenizer: text.SentencepieceTokenizer, auto_encoding: bool, repeat=False):
+def get_dataset(dataset_paths: str, tokenizer, auto_encoding: bool, repeat=False):
     """
     Read dataset file and construct tensorflow dataset.
     Please warn that this function load your multiple dataset files uniformly with `repeat=True`.

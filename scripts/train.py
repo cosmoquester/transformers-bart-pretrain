@@ -3,8 +3,6 @@ import sys
 from math import ceil
 
 import tensorflow as tf
-import tensorflow_addons as tfa
-import tensorflow_text as text
 from transformers import BartConfig, TFBartForConditionalGeneration
 
 from transformers_bart_pretrain.data import (
@@ -33,7 +31,7 @@ group.add_argument("--train-dataset-path", required=True, help="training dataset
 group.add_argument("--dev-dataset-path", required=True, help="dev dataset, a text file or multiple files ex) *.txt")
 group.add_argument("--pretrained-checkpoint", type=str, default=None, help="pretrained checkpoint path")
 group.add_argument("--output-path", default="output", help="output directory to save log and model checkpoints")
-group.add_argument("--sp-model-path", type=str, default="resources/sp-model/sp_model_unigram_16K.model")
+group.add_argument("--sp-model-path", type=str, help="sentencepiece model path to tokenizer")
 
 group = parser.add_argument_group("Training Parameters")
 group.add_argument("--mask-token", type=str, help="mask token ex) [MASK]")
@@ -92,9 +90,14 @@ def main(args: argparse.Namespace):
     if not train_dataset_files or not dev_dataset_files:
         raise RuntimeError("Dataset path is invalid!")
 
-    logger.info("[+] Load Tokenizer")
-    with tf.io.gfile.GFile(args.sp_model_path, "rb") as f:
-        tokenizer = text.SentencepieceTokenizer(f.read(), add_bos=True, add_eos=True)
+    if args.sp_model_path:
+        import tensorflow_text as text
+
+        logger.info("[+] Load Tokenizer")
+        with tf.io.gfile.GFile(args.sp_model_path, "rb") as f:
+            tokenizer = text.SentencepieceTokenizer(f.read(), add_bos=True, add_eos=True)
+    else:
+        logger.warn("[-] Tokenizer path not passed, Exception may be raised!")
 
     if args.mask_token_id:
         mask_token_id = args.mask_token_id
@@ -195,6 +198,8 @@ def main(args: argparse.Namespace):
         )
 
         if args.weight_decay > 0.0:
+            import tensorflow_addons as tfa
+
             optimizer = tfa.optimizers.LAMB(
                 learning_rate,
                 weight_decay_rate=args.weight_decay,
