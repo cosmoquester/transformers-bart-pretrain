@@ -14,6 +14,7 @@ from transformers_bart_pretrain.data import (
     text_infilling,
 )
 from transformers_bart_pretrain.measure import SparseCategoricalAccuracy, SparseCategoricalCrossentropy
+from transformers_bart_pretrain.optimizer import LAMB
 from transformers_bart_pretrain.utils import (
     LRScheduler,
     get_device_strategy,
@@ -198,9 +199,7 @@ def main(args: argparse.Namespace):
         )
 
         if args.weight_decay > 0.0:
-            import tensorflow_addons as tfa
-
-            optimizer = tfa.optimizers.LAMB(
+            optimizer = LAMB(
                 learning_rate,
                 weight_decay_rate=args.weight_decay,
                 exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
