@@ -3,7 +3,7 @@ import sys
 from math import ceil
 
 import tensorflow as tf
-from transformers import BartConfig, TFBartForConditionalGeneration
+from transformers import AdamWeightDecay, BartConfig, TFBartForConditionalGeneration
 
 from transformers_bart_pretrain.data import (
     filter_example,
@@ -14,7 +14,6 @@ from transformers_bart_pretrain.data import (
     text_infilling,
 )
 from transformers_bart_pretrain.measure import SparseCategoricalAccuracy, SparseCategoricalCrossentropy
-from transformers_bart_pretrain.optimizer import LAMB
 from transformers_bart_pretrain.utils import (
     LRScheduler,
     get_device_strategy,
@@ -50,6 +49,7 @@ group.add_argument("--shuffle-buffer-size", type=int, default=20000)
 group.add_argument("--prefetch-buffer-size", type=int, default=1000)
 group.add_argument("--max-sequence-length", type=int, default=256)
 group.add_argument("--weight-decay", type=float, default=0.0, help="use weight decay")
+group.add_argument("--clipnorm", type=float, help="clips gradients to a maximum norm.")
 group.add_argument("--disable-noise", action="store_false", dest="noise", help="disable input noising")
 
 group = parser.add_argument_group("Other settings")
@@ -198,16 +198,13 @@ def main(args: argparse.Namespace):
             total_steps, args.learning_rate, args.min_learning_rate, args.warmup_rate, args.warmup_steps, offset_steps
         )
 
-        if args.weight_decay > 0.0:
-            optimizer = LAMB(
-                learning_rate,
-                weight_decay_rate=args.weight_decay,
-                exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
-            )
-            logger.info("[+] Use LAMB Optimizer")
-        else:
-            optimizer = tf.keras.optimizers.Adam(learning_rate)
-            logger.info("[+] Use Adam Optimizer")
+        logger.info("[+] Use AdamW Optimizer")
+        optimizer = AdamWeightDecay(
+            learning_rate,
+            weight_decay_rate=args.weight_decay,
+            exclude_from_weight_decay=["LayerNorm", "layer_norm", "bias"],
+            clipnorm=args.clipnorm,
+        )
 
         model.compile(
             optimizer=optimizer,
