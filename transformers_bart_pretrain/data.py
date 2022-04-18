@@ -81,7 +81,7 @@ def make_train_examples(source_tokens: tf.Tensor, target_tokens: tf.Tensor) -> T
     }, target_tokens[1:]
 
 
-def text_infilling(mask_token_id: int):
+def text_infilling(mask_token_id: int, masking_rate: float = 0.3):
     mask_token = tf.constant([mask_token_id], tf.int32)
 
     @tf.function(
@@ -98,7 +98,7 @@ def text_infilling(mask_token_id: int):
         """Add text infilling noise to example"""
         source_tokens = inputs["input_ids"]
         token_length = tf.shape(source_tokens)[0]
-        masking_length = tf.cast(tf.cast(token_length, tf.float32) * 0.3, tf.int32)
+        masking_length = tf.cast(tf.cast(token_length, tf.float32) * masking_rate, tf.int32)
         masked_length = 0
 
         while masked_length < masking_length:
