@@ -126,6 +126,53 @@ def text_infilling(mask_token_id: int):
     return _text_infilling
 
 
+def sentence_permutation(segment_token_id: int):
+    @tf.function(
+        input_signature=[
+            {
+                "input_ids": tf.TensorSpec(shape=[None], dtype=tf.int32),
+                "attention_mask": tf.TensorSpec(shape=[None], dtype=tf.int32),
+                "decoder_input_ids": tf.TensorSpec(shape=[None], dtype=tf.int32),
+            },
+            tf.TensorSpec(shape=[None], dtype=tf.int32),
+        ]
+    )
+    def _sentence_permutation(
+        inputs: Dict[str, tf.Tensor], target: tf.Tensor
+    ) -> Tuple[Dict[str, tf.Tensor], tf.Tensor]:
+        """Permute by segment token ID"""
+        source_tokens = inputs["input_ids"]
+        num_source_tokens = tf.cast(tf.shape(source_tokens), tf.int64)
+
+        is_segment = source_tokens == segment_token_id
+        segment_end_indices = tf.concat([tf.squeeze(tf.where(is_segment), axis=1), num_source_tokens], axis=0)
+        segment_start_indices = tf.concat([[0], segment_end_indices[:-1] + 1], axis=0)
+        segment_indices = tf.stack([segment_start_indices, segment_end_indices], axis=1)
+        shuffled_segment_indices = tf.random.shuffle(segment_indices)
+
+        first_segment = shuffled_segment_indices[0]
+        shuffled_segment_indices = shuffled_segment_indices[1:]
+        permutated_source_tokens = source_tokens[first_segment[0] : first_segment[1]]
+
+        num_segments = tf.shape(shuffled_segment_indices)[0]
+        for i in tf.range(num_segments):
+            tf.autograph.experimental.set_loop_options(
+                shape_invariants=[(permutated_source_tokens, tf.TensorShape([None]))]
+            )
+
+            indices = shuffled_segment_indices[i]
+            segment = source_tokens[indices[0] : indices[1]]
+            permutated_source_tokens = tf.concat([permutated_source_tokens, [segment_token_id], segment], axis=0)
+
+        return {
+            "input_ids": permutated_source_tokens,
+            "attention_mask": inputs["attention_mask"],
+            "decoder_input_ids": inputs["decoder_input_ids"],
+        }, target
+
+    return _sentence_permutation
+
+
 def filter_example(max_sequence_length: int) -> Callable[[tf.Tensor, tf.Tensor], tf.Tensor]:
     @tf.function
     def _filter(source_tokens: tf.Tensor, target_tokens: tf.Tensor) -> tf.Tensor:
