@@ -54,7 +54,7 @@ group.add_argument("--clipnorm", type=float, help="clips gradients to a maximum 
 group.add_argument("--disable-text-infilling", action="store_false", dest="use_text_infilling", help="disable input noising")
 group.add_argument("--disable-sentence-permutation", action="store_false", dest="use_sentence_permutation", help="disable input noising")
 group.add_argument("--masking-rate", type=float, default=0.3, help="text infilling masking rate")
-group.add_argument("--permutation-segment-token-id", type=int, required=True, help="segment token id for sentence permutation")
+group.add_argument("--permutation-segment-token-id", type=int, help="segment token id for sentence permutation")
 
 group = parser.add_argument_group("Other settings")
 group.add_argument("--tensorboard-update-freq", type=int, help='log losses and metrics every after this value step')
@@ -159,7 +159,7 @@ def main(args: argparse.Namespace):
             train_dataset = train_dataset.map(text_infilling_fn, tf.data.AUTOTUNE)
             dev_dataset = dev_dataset.map(text_infilling_fn, tf.data.AUTOTUNE)
 
-        if args.use_sentence_permutation:
+        if args.use_sentence_permutation and args.permutation_segment_token_id:
             logger.info("[+] Apply Sentence Permutation Noise")
             sentence_permutation_fn = sentence_permutation(args.permutation_segment_token_id)
             train_dataset = train_dataset.map(sentence_permutation_fn, tf.data.AUTOTUNE)
