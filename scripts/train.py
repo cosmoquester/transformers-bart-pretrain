@@ -10,6 +10,7 @@ from transformers_bart_pretrain.data import (
     get_dataset,
     get_tfrecord_dataset,
     make_train_examples,
+    sentence_permutation,
     slice_example,
     text_infilling,
 )
@@ -50,7 +51,10 @@ group.add_argument("--prefetch-buffer-size", type=int, default=1000)
 group.add_argument("--max-sequence-length", type=int, default=256)
 group.add_argument("--weight-decay", type=float, default=0.0, help="use weight decay")
 group.add_argument("--clipnorm", type=float, help="clips gradients to a maximum norm.")
-group.add_argument("--disable-noise", action="store_false", dest="noise", help="disable input noising")
+group.add_argument("--disable-text-infilling", action="store_false", dest="use_text_infilling", help="disable input noising")
+group.add_argument("--disable-sentence-permutation", action="store_false", dest="use_sentence_permutation", help="disable input noising")
+group.add_argument("--masking-rate", type=float, default=0.3, help="text infilling masking rate")
+group.add_argument("--permutation-segment-token-id", type=int, required=True, help="segment token id for sentence permutation")
 
 group = parser.add_argument_group("Other settings")
 group.add_argument("--tensorboard-update-freq", type=int, help='log losses and metrics every after this value step')
@@ -147,10 +151,19 @@ def main(args: argparse.Namespace):
             make_train_examples, num_parallel_calls=tf.data.AUTOTUNE
         )
         dev_dataset = dev_dataset.map(make_train_examples)
-        if args.noise:
-            logger.info("[+] Use noise function")
-            train_dataset = train_dataset.map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
-            dev_dataset = dev_dataset.map(text_infilling(mask_token_id), tf.data.AUTOTUNE)
+
+        # Apply Noise Functions
+        if args.use_text_infilling:
+            logger.info("[+] Apply Text Infilling Noise")
+            text_infilling_fn = text_infilling(mask_token_id, args.masking_rate)
+            train_dataset = train_dataset.map(text_infilling_fn, tf.data.AUTOTUNE)
+            dev_dataset = dev_dataset.map(text_infilling_fn, tf.data.AUTOTUNE)
+
+        if args.use_sentence_permutation:
+            logger.info("[+] Apply Sentence Permutation Noise")
+            sentence_permutation_fn = sentence_permutation(args.permutation_segment_token_id)
+            train_dataset = train_dataset.map(sentence_permutation_fn, tf.data.AUTOTUNE)
+            dev_dataset = dev_dataset.map(sentence_permutation_fn, tf.data.AUTOTUNE)
 
         logger.info("[+] Initialize Model")
         model_config = BartConfig.from_pretrained(args.model_config_path)
