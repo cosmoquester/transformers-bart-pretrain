@@ -7,7 +7,7 @@
 
 - Script to pre-train hugginface transformers BART
 - Training [BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension](https://arxiv.org/abs/1910.13461)
-- `Text infilling` is the only noise function available now
+- `Text infilling` and `Sentence Permutation` functions are available now
 
 # Train
 
@@ -44,6 +44,7 @@ File Paths:
   --output-path OUTPUT_PATH
                         output directory to save log and model checkpoints
   --sp-model-path SP_MODEL_PATH
+                        sentencepiece model path to tokenizer
 
 Training Parameters:
   --mask-token MASK_TOKEN
@@ -65,6 +66,15 @@ Training Parameters:
   --max-sequence-length MAX_SEQUENCE_LENGTH
   --weight-decay WEIGHT_DECAY
                         use weight decay
+  --clipnorm CLIPNORM   clips gradients to a maximum norm.
+  --disable-text-infilling
+                        disable input noising
+  --disable-sentence-permutation
+                        disable input noising
+  --masking-rate MASKING_RATE
+                        text infilling masking rate
+  --permutation-segment-token-id PERMUTATION_SEGMENT_TOKEN_ID
+                        segment token id for sentence permutation
 
 Other settings:
   --tensorboard-update-freq TENSORBOARD_UPDATE_FREQ
