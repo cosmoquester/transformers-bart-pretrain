@@ -106,8 +106,8 @@ def set_random_seed(seed: int):
 def set_mixed_precision(device: str):
     """Set mixed precision on"""
     mixed_type = "mixed_bfloat16" if device == "TPU" else "mixed_float16"
-    policy = tf.keras.mixed_precision.experimental.Policy(mixed_type)
-    tf.keras.mixed_precision.experimental.set_policy(policy)
+    policy = tf.keras.mixed_precision.Policy(mixed_type)
+    tf.keras.mixed_precision.set_global_policy(policy)
 
 
 def get_device_strategy(device) -> tf.distribute.Strategy:
