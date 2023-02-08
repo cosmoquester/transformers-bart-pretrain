@@ -221,11 +221,8 @@ def main(args: argparse.Namespace):
 
         model.compile(
             optimizer=optimizer,
-            loss={
-                "logits": SparseCategoricalCrossentropy(model_config.pad_token_id, from_logits=True),
-                "encoder_last_hidden_state": None,
-            },
-            metrics={"logits": SparseCategoricalAccuracy(model_config.pad_token_id)},
+            loss=SparseCategoricalCrossentropy(model_config.pad_token_id, from_logits=True),
+            metrics=SparseCategoricalAccuracy(model_config.pad_token_id),
         )
 
         logger.info("[+] Start training")
