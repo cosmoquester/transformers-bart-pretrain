@@ -2,6 +2,7 @@ import argparse
 import glob
 import os
 import sys
+from typing import Callable, Tuple
 
 import tensorflow as tf
 import tensorflow_text as text
@@ -16,14 +17,7 @@ parser.add_argument("--auto-encoding", action="store_true", help="If use autoenc
 # fmt: on
 
 
-def read_data(file_path: str, tokenizer: text.SentencepieceTokenizer, auto_encoding: bool):
-    @tf.function
-    def tokenize_fn(source_text, target_text):
-        # Tokenize & Add bos, eos
-        source_tokens = tokenizer.tokenize(source_text)
-        target_tokens = tokenizer.tokenize(target_text)
-        return source_tokens, target_tokens
-
+def read_data(file_path: str, tokenize_fn: Callable[[str, str], Tuple[tf.Tensor, tf.Tensor]], auto_encoding: bool):
     if auto_encoding:
         duplicate = tf.function(lambda text: (text, text))
         dataset = tf.data.TextLineDataset(
@@ -51,13 +45,20 @@ def main(args: argparse.Namespace):
     with open(args.sp_model_path, "rb") as f:
         tokenizer = text.SentencepieceTokenizer(f.read(), add_bos=True, add_eos=True)
 
+    @tf.function
+    def tokenize_fn(source_text, target_text):
+        # Tokenize & Add bos, eos
+        source_tokens = tokenizer.tokenize(source_text)
+        target_tokens = tokenizer.tokenize(target_text)
+        return source_tokens, target_tokens
+
     for file_path in tqdm(input_files):
         output_dir = args.output_dir if args.output_dir else os.path.dirname(file_path)
         file_name = os.path.basename(file_path)
         output_path = os.path.join(output_dir, os.path.splitext(file_name)[0] + ".tfrecord")
 
         # Write TFRecordFile
-        dataset = read_data(file_path, tokenizer, args.auto_encoding)
+        dataset = read_data(file_path, tokenize_fn, args.auto_encoding)
         writer = tf.data.experimental.TFRecordWriter(output_path, "GZIP")
         writer.write(dataset)
 
