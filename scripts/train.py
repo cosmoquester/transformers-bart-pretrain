@@ -39,6 +39,7 @@ group.add_argument("--mask-token", type=str, help="mask token ex) [MASK]")
 group.add_argument("--mask-token-id", type=int, help="mask token id of vocab")
 group.add_argument("--epochs", type=int, default=10)
 group.add_argument("--steps-per-epoch", type=int, default=None)
+group.add_argument("--dev-steps", type=int, default=None)
 group.add_argument("--learning-rate", type=float, default=2e-4)
 group.add_argument("--min-learning-rate", type=float, default=1e-5)
 group.add_argument("--warmup-steps", type=int)
@@ -50,7 +51,7 @@ group.add_argument("--shuffle-buffer-size", type=int, default=20000)
 group.add_argument("--prefetch-buffer-size", type=int, default=1000)
 group.add_argument("--max-sequence-length", type=int, default=256)
 group.add_argument("--weight-decay", type=float, default=0.0, help="use weight decay")
-group.add_argument("--clipnorm", type=float, help="clips gradients to a maximum norm.")
+group.add_argument("--clipnorm", type=float, default=1.0, help="clips gradients to a maximum norm.")
 group.add_argument("--disable-text-infilling", action="store_false", dest="use_text_infilling", help="disable input noising")
 group.add_argument("--disable-sentence-permutation", action="store_false", dest="use_sentence_permutation", help="disable input noising")
 group.add_argument("--masking-rate", type=float, default=0.3, help="text infilling masking rate")
@@ -133,7 +134,7 @@ def main(args: argparse.Namespace):
             dev_dataset = dev_dataset.map(slice_example(args.max_sequence_length), num_parallel_calls=tf.data.AUTOTUNE)
 
         if args.steps_per_epoch:
-            logger.info("[+] Repeat dataset")
+            logger.info("[+] Repeat train dataset")
             train_dataset = train_dataset.repeat()
 
             if args.skip_epochs:
@@ -145,6 +146,10 @@ def main(args: argparse.Namespace):
             raise RuntimeError("You should pass `--num-total-dataset` or `--steps-per-epoch` for lr scheduling!")
         elif args.repeat:
             raise RuntimeError("You should pass `--steps-per-epoch` when using `--repeat-each-file`!")
+
+        if args.dev_steps:
+            logger.info("[+] Repeat dev dataset")
+            dev_dataset = dev_dataset.repeat()
 
         # Make into Training Examples
         train_dataset = train_dataset.shuffle(args.shuffle_buffer_size).map(
@@ -229,6 +234,7 @@ def main(args: argparse.Namespace):
         model.fit(
             train_dataset,
             validation_data=dev_dataset,
+            validation_steps=args.dev_steps,
             initial_epoch=args.skip_epochs,
             epochs=args.epochs,
             steps_per_epoch=args.steps_per_epoch,
